@@ -1,5 +1,6 @@
 from PIL import Image
 import binascii
+import hashlib
 import optparse
 
 def rgb2hex(r, g, b):
@@ -29,9 +30,13 @@ def decode(hexcode):
 	else:
 		return None
 
-def hide(filename, message):
+def hide(filename, message, password = None):
 	img = Image.open(filename)
+	pass_binary = None
 	binary = str2bin(message) + '1111111111111110'
+	if password:
+		pass_binary = str2bin(hashlib.sha224(password).hexdigest()) + '0000000000000001'
+		binary = pass_binary + binary
 	if img.mode in ('RGBA'):
 		img = img.convert('RGBA')
 		datas = img.getdata()
@@ -57,9 +62,6 @@ def hide(filename, message):
 
 def retr(filename):
 	img = Image.open(filename)
-	password = raw_input('Passphrase: ')
-	if not hashlib.sha224(password).hexdigest() == '0eb77e510b1ec92e8baa82925552edaf517b702603ad51d44a57486e':
-		return 'Incorrect passphrase'
 	if img.mode in ('RGBA'):
 		img = img.convert('RGBA')
 		datas = img.getdata()
@@ -73,6 +75,12 @@ def retr(filename):
 				binary = binary + sBin
 				if binary[-16:] == '1111111111111110':
 					return bin2str(binary[:-16])
+				if binary[-16:] == '0000000000000001':
+					password = raw_input('Password: ')
+					if not hashlib.sha224(password).hexdigest() == bin2str(binary[:-16]):
+						return 'Incorrect passphrase'
+					else:
+						binary = ''
 		return 'No message found'
 	else:
 		return 'Incorrect file type'
